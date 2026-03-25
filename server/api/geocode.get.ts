@@ -1,4 +1,5 @@
 import { LRUCache } from '~/server/utils/sanitize'
+import { getGoogleApiKey } from '~/server/utils/db'
 
 interface AutocompleteResult {
   placeId: string
@@ -24,8 +25,7 @@ export default defineEventHandler(async (event) => {
     return cached
   }
 
-  const config = useRuntimeConfig()
-  const apiKey = config.googlePlacesApiKey
+  const apiKey = getGoogleApiKey(event)
 
   if (!apiKey) {
     throw createError({ statusCode: 500, statusMessage: 'Google Places API key not configured' })

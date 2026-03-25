@@ -1,6 +1,6 @@
 import { getStations, attachPrices } from '~/server/utils/overpass'
 import { searchNearbyStations } from '~/server/utils/google-places'
-import { getDb } from '~/server/utils/db'
+import { getDb, getGoogleApiKey } from '~/server/utils/db'
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
@@ -22,8 +22,7 @@ export default defineEventHandler(async (event) => {
   const lat = query.lat ? parseFloat(query.lat as string) : null
   const lng = query.lng ? parseFloat(query.lng as string) : null
 
-  const config = useRuntimeConfig()
-  const googleApiKey = config.googlePlacesApiKey
+  const googleApiKey = getGoogleApiKey(event)
 
   // Use Google Places API if key is configured and location is provided
   if (googleApiKey && lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {

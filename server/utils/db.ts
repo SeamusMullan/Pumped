@@ -10,6 +10,25 @@ export function getDb(event: H3Event): D1Database | null {
   }
 }
 
+/**
+ * Get the Google Places API key from runtime config or Cloudflare env.
+ * On Cloudflare Pages, useRuntimeConfig() may not pick up env vars —
+ * fall back to reading directly from the Cloudflare env bindings.
+ */
+export function getGoogleApiKey(event: H3Event): string | undefined {
+  const config = useRuntimeConfig()
+  if (config.googlePlacesApiKey) return config.googlePlacesApiKey
+
+  // Fallback: read directly from Cloudflare env bindings
+  try {
+    const env = event.context?.cloudflare?.env
+    return env?.NUXT_GOOGLE_PLACES_API_KEY ?? undefined
+  }
+  catch {
+    return undefined
+  }
+}
+
 export async function upsertStation(db: D1Database, station: {
   id: string
   name: string
