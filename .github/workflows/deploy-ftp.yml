@@ -1,0 +1,57 @@
+name: Deploy via FTP
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+          - staging
+
+# TODO: Configure FTP deployment
+# Required secrets:
+#   FTP_HOST       – FTP server hostname
+#   FTP_USER       – FTP username
+#   FTP_PASSWORD   – FTP password
+#   FTP_PORT       – FTP port (default: 21)
+#   FTP_REMOTE_DIR – Remote directory to upload to
+
+jobs:
+  deploy-ftp:
+    name: Deploy via FTP
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Generate static site
+        run: bun run generate
+
+      # TODO: Replace with your preferred FTP deployment action.
+      # Example using SamKirkland/FTP-Deploy-Action:
+      #
+      # - name: Deploy to FTP
+      #   uses: SamKirkland/FTP-Deploy-Action@v4
+      #   with:
+      #     server: ${{ secrets.FTP_HOST }}
+      #     username: ${{ secrets.FTP_USER }}
+      #     password: ${{ secrets.FTP_PASSWORD }}
+      #     port: ${{ secrets.FTP_PORT || 21 }}
+      #     local-dir: .output/public/
+      #     server-dir: ${{ secrets.FTP_REMOTE_DIR }}
+
+      - name: Deploy placeholder
+        run: echo "FTP deployment not yet configured. See workflow file for instructions."

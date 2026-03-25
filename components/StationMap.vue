@@ -1,0 +1,69 @@
+<template>
+  <div class="h-full w-full rounded-xl overflow-hidden border border-gray-200 shadow-sm" style="min-height: 400px">
+    <div ref="mapContainer" class="h-full w-full" />
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { Station } from '~/types/station'
+
+const props = defineProps<{
+  stations: Station[]
+  center?: [number, number]
+  zoom?: number
+  selectedStationId?: string | null
+}>()
+
+const emit = defineEmits<{
+  selectStation: [station: Station]
+}>()
+
+const mapContainer = ref<HTMLElement | null>(null)
+
+onMounted(async () => {
+  if (!mapContainer.value) return
+
+  // Leaflet is client-only; dynamic import avoids SSR errors
+  const L = (await import('leaflet')).default
+
+  // Fix Leaflet's default icon path issue in bundled environments
+  // @ts-expect-error _getIconUrl is not in types
+  delete L.Icon.Default.prototype._getIconUrl
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  })
+
+  const centerCoords: [number, number] = props.center ?? [53.3498, -6.2603]
+  const map = L.map(mapContainer.value).setView(centerCoords, props.zoom ?? 13)
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  }).addTo(map)
+
+  // Add station markers
+  props.stations.forEach((station) => {
+    const lowestPrice = station.prices.reduce(
+      (min, p) => (p.price < min ? p.price : min),
+      Infinity,
+    )
+
+    const marker = L.marker([station.lat, station.lng])
+      .addTo(map)
+      .bindPopup(
+        `<div class="text-sm">
+          <p class="font-semibold text-gray-900">${station.name}</p>
+          <p class="text-gray-500 mt-0.5">${station.address}</p>
+          <p class="mt-1 font-bold text-green-600">From €${lowestPrice.toFixed(3)}/L</p>
+        </div>`,
+        { maxWidth: 220 },
+      )
+
+    marker.on('click', () => {
+      emit('selectStation', station)
+    })
+  })
+})
+</script>
