@@ -98,6 +98,7 @@
                   :station="station"
                   :selected="selectedStation?.id === station.id"
                   @select="selectedStation = $event"
+                  @price-submitted="fetchStations"
                 />
               </li>
             </ul>
@@ -144,6 +145,7 @@ async function locateMe() {
   await geo.locate()
   if (geo.lat.value && geo.lng.value) {
     setUserLocation(geo.lat.value, geo.lng.value)
+    await fetchStations()
   }
 }
 

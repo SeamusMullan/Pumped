@@ -19,16 +19,20 @@
     </div>
 
     <!-- Prices -->
-    <ul class="flex flex-wrap gap-2" aria-label="Fuel prices">
-      <li
-        v-for="price in station.prices"
-        :key="price.type"
-        class="flex items-center gap-1.5 rounded-md bg-gray-50 px-2 py-1 text-xs"
-      >
-        <span class="font-medium capitalize text-gray-700">{{ FUEL_LABELS[price.type] }}</span>
-        <span class="font-bold text-gray-900">€{{ price.price.toFixed(3) }}</span>
-      </li>
-    </ul>
+    <div v-if="station.prices.length">
+      <ul class="flex flex-wrap gap-2" aria-label="Fuel prices">
+        <li
+          v-for="fp in station.prices"
+          :key="fp.type"
+          class="flex items-center gap-1.5 rounded-md bg-gray-50 px-2 py-1 text-xs"
+        >
+          <span class="font-medium capitalize text-gray-700">{{ FUEL_LABELS[fp.type] }}</span>
+          <span class="font-bold text-gray-900">€{{ fp.price.toFixed(3) }}</span>
+        </li>
+      </ul>
+      <p v-if="priceAge" class="text-xs text-gray-400 mt-1">Updated {{ priceAge }}</p>
+    </div>
+    <p v-else class="text-xs text-gray-400 italic">No prices yet — be the first to report!</p>
 
     <!-- Footer row -->
     <div class="flex items-center justify-between text-xs text-gray-400">
@@ -53,6 +57,22 @@
         {{ AMENITY_LABELS[amenity] ?? amenity }}
       </span>
     </div>
+
+    <!-- Update price toggle -->
+    <button
+      class="text-xs text-green-600 hover:text-green-700 font-medium self-start"
+      @click.stop="showForm = !showForm"
+    >
+      {{ showForm ? 'Cancel' : 'Update price' }}
+    </button>
+
+    <!-- Price submission form -->
+    <PriceSubmitForm
+      v-if="showForm"
+      :station-id="station.id"
+      @submitted="onPriceSubmitted"
+      @click.stop
+    />
   </article>
 </template>
 
@@ -66,7 +86,10 @@ const props = defineProps<{
 
 defineEmits<{
   select: [station: Station]
+  priceSubmitted: []
 }>()
+
+const showForm = ref(false)
 
 const FUEL_LABELS: Record<string, string> = {
   unleaded: 'Unleaded',
@@ -89,4 +112,23 @@ const lowestPrice = computed(() => {
   if (!props.station.prices.length) return null
   return Math.min(...props.station.prices.map(p => p.price))
 })
+
+const priceAge = computed(() => {
+  if (!props.station.prices.length) return null
+  const dates = props.station.prices.map(p => new Date(p.updatedAt).getTime()).filter(t => !isNaN(t))
+  if (!dates.length) return null
+  const latest = Math.max(...dates)
+  const diffMs = Date.now() - latest
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return 'just now'
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${diffHr}h ago`
+  const diffDays = Math.floor(diffHr / 24)
+  return `${diffDays}d ago`
+})
+
+function onPriceSubmitted() {
+  showForm.value = false
+}
 </script>

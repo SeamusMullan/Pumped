@@ -40,4 +40,11 @@ export default defineNuxtConfig({
   },
 
   ssr: true,
+
+  nitro: {
+    // Ensure better-sqlite3 native module is not bundled
+    externals: {
+      inline: [],
+    },
+  },
 })

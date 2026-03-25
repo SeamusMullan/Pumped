@@ -19,14 +19,15 @@ const emit = defineEmits<{
 }>()
 
 const mapContainer = ref<HTMLElement | null>(null)
+let map: any = null
+let L: any = null
+let markerLayer: any = null
 
 onMounted(async () => {
   if (!mapContainer.value) return
 
-  // Leaflet is client-only; dynamic import avoids SSR errors
-  const L = (await import('leaflet')).default
+  L = (await import('leaflet')).default
 
-  // Fix Leaflet's default icon path issue in bundled environments
   // @ts-expect-error _getIconUrl is not in types
   delete L.Icon.Default.prototype._getIconUrl
   L.Icon.Default.mergeOptions({
@@ -36,27 +37,37 @@ onMounted(async () => {
   })
 
   const centerCoords: [number, number] = props.center ?? [53.3498, -6.2603]
-  const map = L.map(mapContainer.value).setView(centerCoords, props.zoom ?? 13)
+  map = L.map(mapContainer.value).setView(centerCoords, props.zoom ?? 13)
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19,
   }).addTo(map)
 
-  // Add station markers
+  markerLayer = L.layerGroup().addTo(map)
+  renderMarkers()
+})
+
+function renderMarkers() {
+  if (!map || !L || !markerLayer) return
+  markerLayer.clearLayers()
+
   props.stations.forEach((station) => {
-    const lowestPrice = station.prices.reduce(
-      (min, p) => (p.price < min ? p.price : min),
-      Infinity,
-    )
+    const lowestPrice = station.prices.length
+      ? station.prices.reduce((min, p) => (p.price < min ? p.price : min), Infinity)
+      : null
+
+    const priceText = lowestPrice !== null
+      ? `<p class="mt-1 font-bold text-green-600">From €${lowestPrice.toFixed(3)}/L</p>`
+      : `<p class="mt-1 text-gray-400 italic text-xs">No prices reported</p>`
 
     const marker = L.marker([station.lat, station.lng])
-      .addTo(map)
+      .addTo(markerLayer)
       .bindPopup(
         `<div class="text-sm">
           <p class="font-semibold text-gray-900">${station.name}</p>
-          <p class="text-gray-500 mt-0.5">${station.address}</p>
-          <p class="mt-1 font-bold text-green-600">From €${lowestPrice.toFixed(3)}/L</p>
+          <p class="text-gray-500 mt-0.5">${station.address || station.city}</p>
+          ${priceText}
         </div>`,
         { maxWidth: 220 },
       )
@@ -65,5 +76,15 @@ onMounted(async () => {
       emit('selectStation', station)
     })
   })
+}
+
+watch(() => props.stations, () => {
+  renderMarkers()
+}, { deep: true })
+
+watch(() => props.center, (newCenter) => {
+  if (map && newCenter) {
+    map.setView(newCenter, props.zoom ?? 13)
+  }
 })
 </script>

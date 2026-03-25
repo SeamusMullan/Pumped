@@ -30,5 +30,8 @@ Thumbs.db
 .env.*
 !.env.example
 
+# Database
+data/
+
 # Test coverage
 coverage/

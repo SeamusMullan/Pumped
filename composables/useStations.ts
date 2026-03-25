@@ -1,92 +1,5 @@
 import type { Station, StationFilters, FuelPrice } from '~/types/station'
 
-const MOCK_STATIONS: Station[] = [
-  {
-    id: '1',
-    name: 'Shell Westmoreland Street',
-    brand: 'Shell',
-    address: '14 Westmoreland Street',
-    city: 'Dublin',
-    postcode: 'D02 XH78',
-    lat: 53.3454,
-    lng: -6.2595,
-    prices: [
-      { type: 'unleaded', price: 1.789, updatedAt: new Date().toISOString() },
-      { type: 'diesel', price: 1.699, updatedAt: new Date().toISOString() },
-    ],
-    amenities: ['car-wash', 'shop', 'atm'],
-    openingHours: '24/7',
-  },
-  {
-    id: '2',
-    name: 'BP O\'Connell Street',
-    brand: 'BP',
-    address: '42 O\'Connell Street',
-    city: 'Dublin',
-    postcode: 'D01 F5P2',
-    lat: 53.3498,
-    lng: -6.2603,
-    prices: [
-      { type: 'unleaded', price: 1.769, updatedAt: new Date().toISOString() },
-      { type: 'diesel', price: 1.679, updatedAt: new Date().toISOString() },
-      { type: 'premium', price: 1.899, updatedAt: new Date().toISOString() },
-    ],
-    amenities: ['shop', 'coffee'],
-    openingHours: '06:00–22:00',
-  },
-  {
-    id: '3',
-    name: 'Applegreen Rathmines',
-    brand: 'Applegreen',
-    address: '8 Rathmines Road Lower',
-    city: 'Dublin',
-    postcode: 'D06 W8X7',
-    lat: 53.3273,
-    lng: -6.2644,
-    prices: [
-      { type: 'unleaded', price: 1.749, updatedAt: new Date().toISOString() },
-      { type: 'diesel', price: 1.659, updatedAt: new Date().toISOString() },
-      { type: 'e10', price: 1.729, updatedAt: new Date().toISOString() },
-    ],
-    amenities: ['shop', 'car-wash', 'coffee', 'atm'],
-    openingHours: '24/7',
-  },
-  {
-    id: '4',
-    name: 'Texaco Ranelagh',
-    brand: 'Texaco',
-    address: '3 Ranelagh Road',
-    city: 'Dublin',
-    postcode: 'D06 Y2V9',
-    lat: 53.3297,
-    lng: -6.2533,
-    prices: [
-      { type: 'unleaded', price: 1.799, updatedAt: new Date().toISOString() },
-      { type: 'diesel', price: 1.709, updatedAt: new Date().toISOString() },
-    ],
-    amenities: ['shop'],
-    openingHours: '07:00–21:00',
-  },
-  {
-    id: '5',
-    name: 'Circle K Ballsbridge',
-    brand: 'Circle K',
-    address: '22 Pembroke Road',
-    city: 'Dublin',
-    postcode: 'D04 EP20',
-    lat: 53.3319,
-    lng: -6.2368,
-    prices: [
-      { type: 'unleaded', price: 1.759, updatedAt: new Date().toISOString() },
-      { type: 'diesel', price: 1.669, updatedAt: new Date().toISOString() },
-      { type: 'premium', price: 1.889, updatedAt: new Date().toISOString() },
-      { type: 'lpg', price: 0.989, updatedAt: new Date().toISOString() },
-    ],
-    amenities: ['shop', 'coffee', 'car-wash', 'atm'],
-    openingHours: '24/7',
-  },
-]
-
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
   const dLat = ((lat2 - lat1) * Math.PI) / 180
@@ -117,9 +30,13 @@ export function useStations() {
     loading.value = true
     error.value = null
     try {
-      // TODO: Replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 300))
-      stations.value = MOCK_STATIONS
+      const params: Record<string, string> = {}
+      if (userLocation.value) {
+        params.lat = String(userLocation.value.lat)
+        params.lng = String(userLocation.value.lng)
+        params.radius = String(filters.value.maxDistance)
+      }
+      stations.value = await $fetch<Station[]>('/api/stations', { params })
     }
     catch (e) {
       error.value = 'Failed to load stations. Please try again.'
@@ -130,12 +47,25 @@ export function useStations() {
     }
   }
 
+  async function submitPrice(stationId: string, fuelType: FuelPrice['type'], price: number) {
+    await $fetch(`/api/stations/${encodeURIComponent(stationId)}/prices`, {
+      method: 'POST',
+      body: { fuelType, price },
+    })
+    // Re-fetch to update displayed prices
+    await fetchStations()
+  }
+
   const stationsWithDistance = computed(() => {
     if (!userLocation.value) return stations.value
-    return stations.value.map(s => ({
-      ...s,
-      distanceKm: haversineDistance(userLocation.value!.lat, userLocation.value!.lng, s.lat, s.lng),
-    }))
+    return stations.value.map((s) => {
+      // If server already calculated distance, use it; otherwise compute client-side
+      if (s.distanceKm !== undefined) return s
+      return {
+        ...s,
+        distanceKm: haversineDistance(userLocation.value!.lat, userLocation.value!.lng, s.lat, s.lng),
+      }
+    })
   })
 
   const filteredStations = computed(() => {
@@ -202,7 +132,7 @@ export function useStations() {
   })
 
   const availableBrands = computed(() =>
-    [...new Set(stations.value.map(s => s.brand))].sort(),
+    [...new Set(stations.value.map(s => s.brand).filter(Boolean))].sort(),
   )
 
   function getPriceForType(station: Station, fuelType: FuelPrice['type'] | 'all'): number | null {
@@ -225,5 +155,6 @@ export function useStations() {
     fetchStations,
     setUserLocation,
     getPriceForType,
+    submitPrice,
   }
 }
