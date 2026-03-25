@@ -1,4 +1,4 @@
-# Pumped 🚗⛽
+# Pumped 
 
 **Find and compare petrol station prices near you.**
 
@@ -6,12 +6,12 @@ Pumped is a desktop, tablet, and mobile-compatible web app built with [Nuxt 3](h
 
 ## Features
 
-- 🗺️ Interactive map powered by [Leaflet](https://leafletjs.com) + OpenStreetMap
-- ⛽ Filter by fuel type (unleaded, diesel, premium, E10, LPG)
-- �� "Near me" button using the browser Geolocation API
-- 💰 Sort by cheapest price or nearest station
-- 📱 Mobile-first responsive design
-- 🔍 SEO-optimised with `useSeoMeta` and full Open Graph/Twitter card meta
+- Interactive map powered by [Leaflet](https://leafletjs.com) + OpenStreetMap
+- Filter by fuel type (unleaded, diesel, premium, E10, LPG)
+- "Near me" button using the browser Geolocation API
+- Sort by cheapest price or nearest station
+- Mobile-first responsive design
+- SEO-optimised with `useSeoMeta` and full Open Graph/Twitter card meta
 
 ## Tech stack
 
