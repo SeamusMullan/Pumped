@@ -65,7 +65,7 @@ function mapElement(el: OverpassElement): Station | null {
   }
 }
 
-async function fetchFromOverpass(): Promise<Station[]> {
+async function fetchFromOverpass(db: D1Database): Promise<Station[]> {
   const response = await fetch(OVERPASS_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -84,15 +84,15 @@ async function fetchFromOverpass(): Promise<Station[]> {
     if (station) {
       stations.push(station)
       // Persist to DB as fallback
-      upsertStation(station)
+      await upsertStation(db, station)
     }
   }
 
   return stations
 }
 
-function loadFromDb(): Station[] {
-  const rows = getAllStationsFromDb()
+async function loadFromDb(db: D1Database): Promise<Station[]> {
+  const rows = await getAllStationsFromDb(db)
   return rows.map(row => ({
     id: row.id,
     name: row.name,
@@ -109,7 +109,7 @@ function loadFromDb(): Station[] {
   }))
 }
 
-export async function getStations(): Promise<Station[]> {
+export async function getStations(db: D1Database): Promise<Station[]> {
   const now = Date.now()
 
   // Return cache if fresh
@@ -119,7 +119,7 @@ export async function getStations(): Promise<Station[]> {
 
   try {
     console.log('[overpass] Fetching stations from Overpass API...')
-    const stations = await fetchFromOverpass()
+    const stations = await fetchFromOverpass(db)
     console.log(`[overpass] Fetched ${stations.length} stations`)
     cachedStations = stations
     cacheTimestamp = now
@@ -128,7 +128,7 @@ export async function getStations(): Promise<Station[]> {
   catch (err) {
     console.error('[overpass] Failed to fetch from Overpass, falling back to DB:', err)
     // Fallback to DB
-    const dbStations = loadFromDb()
+    const dbStations = await loadFromDb(db)
     if (dbStations.length) {
       cachedStations = dbStations
       cacheTimestamp = now
@@ -138,9 +138,9 @@ export async function getStations(): Promise<Station[]> {
   }
 }
 
-export function attachPrices(stations: Station[]): Station[] {
+export async function attachPrices(db: D1Database, stations: Station[]): Promise<Station[]> {
   const ids = stations.map(s => s.id)
-  const priceMap = getLatestPrices(ids)
+  const priceMap = await getLatestPrices(db, ids)
 
   return stations.map(s => ({
     ...s,

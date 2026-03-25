@@ -1,5 +1,6 @@
 import { getStations, attachPrices } from '~/server/utils/overpass'
 import { searchNearbyStations } from '~/server/utils/google-places'
+import { getDb } from '~/server/utils/db'
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
@@ -16,6 +17,7 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 const GOOGLE_FETCH_RADIUS_M = 20_000 // 20 km
 
 export default defineEventHandler(async (event) => {
+  const db = getDb(event)
   const query = getQuery(event)
   const lat = query.lat ? parseFloat(query.lat as string) : null
   const lng = query.lng ? parseFloat(query.lng as string) : null
@@ -36,7 +38,7 @@ export default defineEventHandler(async (event) => {
       }))
 
       // Also attach any user-submitted prices from the DB
-      stations = attachPrices(stations)
+      stations = await attachPrices(db, stations)
 
       return stations
     }
@@ -47,7 +49,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Fallback: Overpass API (no location required, fetches all Ireland stations)
-  let stations = await getStations()
+  let stations = await getStations(db)
 
   if (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {
     stations = stations
@@ -58,7 +60,7 @@ export default defineEventHandler(async (event) => {
       .filter(s => (s.distanceKm ?? Infinity) <= 50)
   }
 
-  stations = attachPrices(stations)
+  stations = await attachPrices(db, stations)
 
   return stations
 })

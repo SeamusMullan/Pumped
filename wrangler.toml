@@ -1,0 +1,9 @@
+name = "pumped"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = ".output/public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pumped-db"
+database_id = "bebb0269-f382-43d2-8f11-d9fee0f0b74f"
+migrations_dir = "migrations"

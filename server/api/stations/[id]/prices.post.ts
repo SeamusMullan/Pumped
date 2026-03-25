@@ -1,8 +1,9 @@
-import { insertPrice, checkRateLimit, stationExists, upsertStation } from '~/server/utils/db'
+import { insertPrice, checkRateLimit, stationExists, upsertStation, getDb } from '~/server/utils/db'
 
 const VALID_FUEL_TYPES = ['unleaded', 'diesel', 'premium', 'e10', 'lpg'] as const
 
 export default defineEventHandler(async (event) => {
+  const db = getDb(event)
   const stationId = decodeURIComponent(getRouterParam(event, 'id') ?? '')
   if (!stationId) {
     throw createError({ statusCode: 400, statusMessage: 'Station ID is required' })
@@ -25,9 +26,9 @@ export default defineEventHandler(async (event) => {
   const roundedPrice = Math.round(price * 1000) / 1000
 
   // If station doesn't exist in DB, auto-create it (e.g. Google Places stations)
-  if (!stationExists(stationId)) {
+  if (!await stationExists(db, stationId)) {
     if (body.station && body.station.name && body.station.lat && body.station.lng) {
-      upsertStation({
+      await upsertStation(db, {
         id: stationId,
         name: body.station.name,
         brand: '',
@@ -46,11 +47,11 @@ export default defineEventHandler(async (event) => {
 
   // Rate limit
   const clientIp = getRequestIP(event, { xForwardedFor: true }) || 'unknown'
-  if (!checkRateLimit(clientIp)) {
+  if (!await checkRateLimit(db, clientIp)) {
     throw createError({ statusCode: 429, statusMessage: 'Too many submissions. Please try again later.' })
   }
 
-  insertPrice(stationId, body.fuelType, roundedPrice, clientIp)
+  await insertPrice(db, stationId, body.fuelType, roundedPrice, clientIp)
 
   return {
     success: true,
