@@ -37,8 +37,10 @@ export default defineEventHandler(async (event) => {
         distanceKm: haversineDistance(lat, lng, s.lat, s.lng),
       }))
 
-      // Also attach any user-submitted prices from the DB
-      stations = await attachPrices(db, stations)
+      // Also attach any user-submitted prices from the DB (if available)
+      if (db) {
+        stations = await attachPrices(db, stations)
+      }
 
       return stations
     }
@@ -60,7 +62,9 @@ export default defineEventHandler(async (event) => {
       .filter(s => (s.distanceKm ?? Infinity) <= 50)
   }
 
-  stations = await attachPrices(db, stations)
+  if (db) {
+    stations = await attachPrices(db, stations)
+  }
 
   return stations
 })

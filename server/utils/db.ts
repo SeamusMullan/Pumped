@@ -1,7 +1,13 @@
 import type { H3Event } from 'h3'
 
-export function getDb(event: H3Event): D1Database {
-  return event.context.cloudflare.env.DB
+export function getDb(event: H3Event): D1Database | null {
+  try {
+    const db = event.context?.cloudflare?.env?.DB
+    return db ?? null
+  }
+  catch {
+    return null
+  }
 }
 
 export async function upsertStation(db: D1Database, station: {

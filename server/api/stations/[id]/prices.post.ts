@@ -5,6 +5,9 @@ const VALID_FUEL_TYPES = ['unleaded', 'diesel', 'premium', 'e10', 'lpg'] as cons
 
 export default defineEventHandler(async (event) => {
   const db = getDb(event)
+  if (!db) {
+    throw createError({ statusCode: 503, statusMessage: 'Database not available' })
+  }
   const stationId = decodeURIComponent(getRouterParam(event, 'id') ?? '')
   if (!stationId) {
     throw createError({ statusCode: 400, statusMessage: 'Station ID is required' })
