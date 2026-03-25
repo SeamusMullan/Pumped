@@ -41,7 +41,7 @@
 
       <h2 class="text-xl font-semibold text-gray-900 mt-8 mb-3">Your rights</h2>
       <p>
-        Under GDPR (applicable in Ireland and the UK), you have the right to request access to, correction of, or deletion of any personal data we hold about you. Since the only personal data we store is your IP address (retained for up to 30 days), you can contact us to request its early deletion.
+        Under GDPR, you have the right to request access to, correction of, or deletion of any personal data we hold about you. Since the only personal data we store is your IP address (retained for up to 30 days), you can contact us to request its early deletion.
       </p>
 
       <h2 class="text-xl font-semibold text-gray-900 mt-8 mb-3">Contact</h2>
