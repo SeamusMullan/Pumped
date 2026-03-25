@@ -1,4 +1,5 @@
 import { getStations, attachPrices } from '~/server/utils/overpass'
+import { searchNearbyStations } from '~/server/utils/google-places'
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
@@ -10,25 +11,53 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
+// Always fetch a fixed radius from Google to maximize cache hits.
+// Client-side filtering handles the user's chosen distance.
+const GOOGLE_FETCH_RADIUS_M = 20_000 // 20 km
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const lat = query.lat ? parseFloat(query.lat as string) : null
   const lng = query.lng ? parseFloat(query.lng as string) : null
-  const radius = query.radius ? Math.min(parseFloat(query.radius as string), 100) : 50
 
+  const config = useRuntimeConfig()
+  const googleApiKey = config.googlePlacesApiKey
+
+  // Use Google Places API if key is configured and location is provided
+  if (googleApiKey && lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {
+    try {
+      console.log(`[google-places] Searching near ${lat},${lng} radius=${GOOGLE_FETCH_RADIUS_M}m`)
+      let stations = await searchNearbyStations(googleApiKey, lat, lng, GOOGLE_FETCH_RADIUS_M)
+
+      // Calculate distances
+      stations = stations.map(s => ({
+        ...s,
+        distanceKm: haversineDistance(lat, lng, s.lat, s.lng),
+      }))
+
+      // Also attach any user-submitted prices from the DB
+      stations = attachPrices(stations)
+
+      return stations
+    }
+    catch (err) {
+      console.error('[google-places] Failed, falling back to Overpass:', err)
+      // Fall through to Overpass
+    }
+  }
+
+  // Fallback: Overpass API (no location required, fetches all Ireland stations)
   let stations = await getStations()
 
-  // Filter by distance if location provided
   if (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {
     stations = stations
       .map(s => ({
         ...s,
         distanceKm: haversineDistance(lat, lng, s.lat, s.lng),
       }))
-      .filter(s => (s.distanceKm ?? Infinity) <= radius)
+      .filter(s => (s.distanceKm ?? Infinity) <= 50)
   }
 
-  // Attach user-submitted prices
   stations = attachPrices(stations)
 
   return stations

@@ -17,7 +17,7 @@ export function useStations() {
 
   const filters = ref<StationFilters>({
     fuelType: 'all',
-    maxDistance: 10,
+    maxDistance: 5,
     maxPrice: null,
     brands: [],
     sortBy: 'price',
@@ -25,18 +25,27 @@ export function useStations() {
   })
 
   const userLocation = ref<{ lat: number; lng: number } | null>(null)
+  let lastFetchKey = ''
 
-  async function fetchStations() {
+  async function fetchStations(force = false) {
+    // Build a key from current params to skip redundant fetches
+    const loc = userLocation.value
+    const fetchKey = loc ? `${loc.lat.toFixed(3)},${loc.lng.toFixed(3)}` : 'none'
+
+    if (!force && fetchKey === lastFetchKey && stations.value.length > 0) {
+      return
+    }
+
     loading.value = true
     error.value = null
     try {
       const params: Record<string, string> = {}
-      if (userLocation.value) {
-        params.lat = String(userLocation.value.lat)
-        params.lng = String(userLocation.value.lng)
-        params.radius = String(filters.value.maxDistance)
+      if (loc) {
+        params.lat = String(loc.lat)
+        params.lng = String(loc.lng)
       }
       stations.value = await $fetch<Station[]>('/api/stations', { params })
+      lastFetchKey = fetchKey
     }
     catch (e) {
       error.value = 'Failed to load stations. Please try again.'

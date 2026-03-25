@@ -3,31 +3,22 @@
     <!-- Hero / location bar -->
     <section class="bg-white border-b border-gray-200">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div class="flex-1">
-            <h1 class="text-xl font-bold text-gray-900">Find Cheap Petrol Near You</h1>
-            <p class="text-sm text-gray-500 mt-0.5">
-              {{ filteredStations.length }} station{{ filteredStations.length !== 1 ? 's' : '' }} found
-              <template v-if="userLocation"> within {{ filters.maxDistance }} km</template>
-            </p>
+        <div class="flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-xl font-bold text-gray-900">Find Cheap Petrol Near You</h1>
+              <p class="text-sm text-gray-500 mt-0.5">
+                {{ filteredStations.length }} station{{ filteredStations.length !== 1 ? 's' : '' }} found
+                <template v-if="userLocation"> within {{ filters.maxDistance }} km</template>
+              </p>
+            </div>
           </div>
-          <button
-            class="btn-primary gap-2"
-            :disabled="geo.loading.value"
-            @click="locateMe"
-          >
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span>{{ geo.loading.value ? 'Locating…' : 'Near me' }}</span>
-          </button>
-        </div>
 
-        <!-- Geo error -->
-        <p v-if="geo.error.value" class="mt-2 text-sm text-red-600" role="alert">
-          {{ geo.error.value }}
-        </p>
+          <LocationSearch
+            :location-label="locationLabel"
+            @select-location="onSelectLocation"
+          />
+        </div>
       </div>
     </section>
 
@@ -110,7 +101,6 @@
 </template>
 
 <script setup lang="ts">
-const geo = useGeolocation()
 const {
   filteredStations,
   availableBrands,
@@ -124,6 +114,7 @@ const {
 
 const filtersOpen = ref(false)
 const selectedStation = ref(null)
+const locationLabel = ref<string | undefined>()
 
 const mapCenter = computed<[number, number]>(() =>
   userLocation.value
@@ -141,18 +132,16 @@ useSeoMeta({
   ogDescription: seoDescription,
 })
 
-async function locateMe() {
-  await geo.locate()
-  if (geo.lat.value && geo.lng.value) {
-    setUserLocation(geo.lat.value, geo.lng.value)
-    await fetchStations()
-  }
+async function onSelectLocation(location: { lat: number; lng: number; name: string }) {
+  setUserLocation(location.lat, location.lng)
+  locationLabel.value = location.name
+  await fetchStations()
 }
 
 function resetFilters() {
   filters.value = {
     fuelType: 'all',
-    maxDistance: 10,
+    maxDistance: 5,
     maxPrice: null,
     brands: [],
     sortBy: 'price',

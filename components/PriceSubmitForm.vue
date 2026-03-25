@@ -30,7 +30,7 @@
           placeholder="1.789"
           class="text-xs rounded-md border border-gray-300 pl-5 pr-2 py-1.5 w-24 focus:outline-none focus:ring-1 focus:ring-green-500"
           required
-        />
+        >
       </div>
 
       <button
@@ -80,8 +80,9 @@ async function handleSubmit() {
 
     setTimeout(() => { successMsg.value = '' }, 3000)
   }
-  catch (e: any) {
-    errorMsg.value = e?.data?.statusMessage || 'Failed to submit price. Try again.'
+  catch (e: unknown) {
+    const err = e as { data?: { statusMessage?: string } }
+    errorMsg.value = err?.data?.statusMessage || 'Failed to submit price. Try again.'
   }
   finally {
     submitting.value = false

@@ -19,9 +19,9 @@ const emit = defineEmits<{
 }>()
 
 const mapContainer = ref<HTMLElement | null>(null)
-let map: any = null
-let L: any = null
-let markerLayer: any = null
+let map: InstanceType<typeof import('leaflet').Map> | null = null
+let L: typeof import('leaflet') | null = null
+let markerLayer: InstanceType<typeof import('leaflet').LayerGroup> | null = null
 
 onMounted(async () => {
   if (!mapContainer.value) return

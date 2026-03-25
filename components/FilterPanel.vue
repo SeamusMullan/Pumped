@@ -130,7 +130,7 @@ const fuelTypeOptions = [
 function resetFilters() {
   emit('update:modelValue', {
     fuelType: 'all',
-    maxDistance: 10,
+    maxDistance: 5,
     maxPrice: null,
     brands: [],
     sortBy: 'price',

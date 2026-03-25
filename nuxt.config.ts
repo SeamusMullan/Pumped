@@ -34,6 +34,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
+    googlePlacesApiKey: '', // Set via NUXT_GOOGLE_PLACES_API_KEY env var
     public: {
       mapTileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     },
