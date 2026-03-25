@@ -1,4 +1,5 @@
 import { insertPrice, checkRateLimit, stationExists, upsertStation, getDb } from '~/server/utils/db'
+import { escapeHtml, getClientIp } from '~/server/utils/sanitize'
 
 const VALID_FUEL_TYPES = ['unleaded', 'diesel', 'premium', 'e10', 'lpg'] as const
 
@@ -26,13 +27,27 @@ export default defineEventHandler(async (event) => {
   const roundedPrice = Math.round(price * 1000) / 1000
 
   // If station doesn't exist in DB, auto-create it (e.g. Google Places stations)
+  // Only allow station IDs that look like they came from Google Places or Overpass
   if (!await stationExists(db, stationId)) {
+    if (!stationId.startsWith('google/') && !stationId.match(/^(node|way|relation)\/\d+$/)) {
+      throw createError({ statusCode: 400, statusMessage: 'Invalid station ID format' })
+    }
+
     if (body.station && body.station.name && body.station.lat && body.station.lng) {
+      // Sanitize user-provided strings
+      const name = escapeHtml(body.station.name.slice(0, 200))
+      const address = escapeHtml((body.station.address || '').slice(0, 500))
+
+      // Validate coordinates are reasonable (roughly IE/GB area)
+      if (body.station.lat < 49 || body.station.lat > 61 || body.station.lng < -11 || body.station.lng > 2) {
+        throw createError({ statusCode: 400, statusMessage: 'Station location is out of supported area' })
+      }
+
       await upsertStation(db, {
         id: stationId,
-        name: body.station.name,
+        name,
         brand: '',
-        address: body.station.address || '',
+        address,
         city: '',
         postcode: '',
         lat: body.station.lat,
@@ -45,8 +60,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // Rate limit
-  const clientIp = getRequestIP(event, { xForwardedFor: true }) || 'unknown'
+  // Rate limit — use Cloudflare's trusted header, not spoofable X-Forwarded-For
+  const clientIp = getClientIp(event)
   if (!await checkRateLimit(db, clientIp)) {
     throw createError({ statusCode: 429, statusMessage: 'Too many submissions. Please try again later.' })
   }

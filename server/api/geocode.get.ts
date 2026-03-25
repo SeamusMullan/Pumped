@@ -1,12 +1,14 @@
-// Cache autocomplete results to avoid repeated API calls for the same prefix
+import { LRUCache } from '~/server/utils/sanitize'
+
 interface AutocompleteResult {
   placeId: string
   name: string
   description: string
 }
 
-const autocompleteCache = new Map<string, { results: AutocompleteResult[]; timestamp: number }>()
+// LRU cache — max 1000 entries to prevent memory exhaustion
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+const autocompleteCache = new LRUCache<AutocompleteResult[]>(1000, CACHE_TTL)
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -18,8 +20,8 @@ export default defineEventHandler(async (event) => {
 
   // Check cache
   const cached = autocompleteCache.get(q)
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.results
+  if (cached) {
+    return cached
   }
 
   const config = useRuntimeConfig()
@@ -62,7 +64,7 @@ export default defineEventHandler(async (event) => {
   }
 
   if (!data.suggestions?.length) {
-    autocompleteCache.set(q, { results: [], timestamp: Date.now() })
+    autocompleteCache.set(q, [])
     return []
   }
 
@@ -80,6 +82,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  autocompleteCache.set(q, { results, timestamp: Date.now() })
+  autocompleteCache.set(q, results)
   return results
 })

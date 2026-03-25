@@ -1,4 +1,5 @@
-// Cache place details — place IDs are stable so these can be cached long
+import { LRUCache } from '~/server/utils/sanitize'
+
 interface PlaceResult {
   lat: number
   lng: number
@@ -6,8 +7,9 @@ interface PlaceResult {
   address: string
 }
 
-const placeCache = new Map<string, { result: PlaceResult; timestamp: number }>()
+// LRU cache — max 2000 entries, 24h TTL
 const CACHE_TTL = 24 * 60 * 60 * 1000 // 24 hours
+const placeCache = new LRUCache<PlaceResult>(2000, CACHE_TTL)
 
 export default defineEventHandler(async (event) => {
   const placeId = getRouterParam(event, 'placeId')
@@ -17,8 +19,8 @@ export default defineEventHandler(async (event) => {
 
   // Check cache
   const cached = placeCache.get(placeId)
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.result
+  if (cached) {
+    return cached
   }
 
   const config = useRuntimeConfig()
@@ -58,6 +60,6 @@ export default defineEventHandler(async (event) => {
     address: data.formattedAddress || '',
   }
 
-  placeCache.set(placeId, { result, timestamp: Date.now() })
+  placeCache.set(placeId, result)
   return result
 })

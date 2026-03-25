@@ -1,4 +1,5 @@
 import type { Station, FuelPrice } from '~/types/station'
+import { LRUCache } from '~/server/utils/sanitize'
 
 interface GoogleFuelPrice {
   type: string
@@ -85,14 +86,9 @@ function mapGooglePlace(place: GooglePlace): Station | null {
   }
 }
 
-// In-memory cache keyed by lat/lng/radius
-interface CacheEntry {
-  stations: Station[]
-  timestamp: number
-}
-
-const cache = new Map<string, CacheEntry>()
+// LRU cache keyed by lat/lng grid — max 500 entries to prevent memory exhaustion
 const CACHE_TTL = 30 * 60 * 1000 // 30 minutes (Google prices update more often)
+const cache = new LRUCache<Station[]>(500, CACHE_TTL)
 
 function cacheKey(lat: number, lng: number): string {
   // Round to ~1km grid to improve cache hits for nearby queries
@@ -109,8 +105,8 @@ export async function searchNearbyStations(
 ): Promise<Station[]> {
   const key = cacheKey(lat, lng)
   const cached = cache.get(key)
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.stations
+  if (cached) {
+    return cached
   }
 
   const fieldMask = [
@@ -161,6 +157,6 @@ export async function searchNearbyStations(
     }
   }
 
-  cache.set(key, { stations, timestamp: Date.now() })
+  cache.set(key, stations)
   return stations
 }

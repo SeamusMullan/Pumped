@@ -7,6 +7,15 @@
 <script setup lang="ts">
 import type { Station } from '~/types/station'
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 const props = defineProps<{
   stations: Station[]
   center?: [number, number]
@@ -31,9 +40,9 @@ onMounted(async () => {
   // @ts-expect-error _getIconUrl is not in types
   delete L.Icon.Default.prototype._getIconUrl
   L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    iconRetinaUrl: '/images/marker-icon-2x.png',
+    iconUrl: '/images/marker-icon.png',
+    shadowUrl: '/images/marker-shadow.png',
   })
 
   const centerCoords: [number, number] = props.center ?? [53.3498, -6.2603]
@@ -61,12 +70,15 @@ function renderMarkers() {
       ? `<p class="mt-1 font-bold text-green-600">From €${lowestPrice.toFixed(3)}/L</p>`
       : `<p class="mt-1 text-gray-400 italic text-xs">No prices reported</p>`
 
+    const safeName = escapeHtml(station.name)
+    const safeLocation = escapeHtml(station.address || station.city)
+
     const marker = L.marker([station.lat, station.lng])
       .addTo(markerLayer)
       .bindPopup(
         `<div class="text-sm">
-          <p class="font-semibold text-gray-900">${station.name}</p>
-          <p class="text-gray-500 mt-0.5">${station.address || station.city}</p>
+          <p class="font-semibold text-gray-900">${safeName}</p>
+          <p class="text-gray-500 mt-0.5">${safeLocation}</p>
           ${priceText}
         </div>`,
         { maxWidth: 220 },

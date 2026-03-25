@@ -24,3 +24,7 @@ jobs:
 
       - name: Run ESLint
         run: bun run lint
+
+      - name: Audit dependencies
+        run: bun pm ls --all 2>&1 | head -100
+        continue-on-error: true

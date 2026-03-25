@@ -98,13 +98,27 @@ export async function stationExists(db: D1Database, stationId: string): Promise<
 }
 
 export async function getPriceHistory(db: D1Database, stationId: string, days: number = 7) {
+  // Use CAST to ensure days is treated as integer in the SQL expression
   const { results } = await db.prepare(`
     SELECT fuel_type, price, submitted_at
     FROM fuel_prices
-    WHERE station_id = ? AND submitted_at > datetime('now', '-' || ? || ' days')
+    WHERE station_id = ? AND submitted_at > datetime('now', '-' || CAST(? AS INTEGER) || ' days')
     ORDER BY submitted_at DESC
   `).bind(stationId, days).all<{ fuel_type: string; price: number; submitted_at: string }>()
   return results
+}
+
+/**
+ * Anonymize IP addresses older than 30 days for GDPR compliance.
+ * Should be called periodically (e.g. daily via cron or on deploy).
+ */
+export async function anonymizeOldIps(db: D1Database) {
+  await db.prepare(`
+    UPDATE fuel_prices SET client_ip = 'anonymized'
+    WHERE client_ip != 'anonymized'
+      AND client_ip IS NOT NULL
+      AND submitted_at < datetime('now', '-30 days')
+  `).run()
 }
 
 export async function getAllStationsFromDb(db: D1Database) {
